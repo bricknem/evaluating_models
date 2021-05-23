@@ -1,11 +1,9 @@
 ---
 title: "evaluating_models"
-author: "Margaret Brickner"
+author: "Margaret Brickner, Anna Abelman, Rich Viebrock"
 date: "5/20/2021"
 output: html_document
 ---
-
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -13,115 +11,80 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(purrr)
 library(lubridate)
+library(ggplot2)
+source("nse.R")
 ```
 
+Task: Develop your own performance metric - Be creative here. Imagine an application of a hydrologic model as a component of an environmental assessment. It could be ecologically related (e.g estimating streamflow during the summer as part of assessing fish habitat quality); water resource management related (e.g estimating total water supply), or something else.
 
-Develop your own performance metric - Be creative here. Imagine an application of a hydrologic model as a component of an environmental assessment. It could be ecologically related (e.g estimating streamflow during the summer as part of assessing fish habitat quality); water resource management related (e.g estimating total water supply), or something else.
-
-
-
-1. Code your metric as a function
+Question 01: Code your metric as a function
+Question 02: Apply to the streamflow data provided in sagerm.txt (multiple model results)
 
 ```{r performance metric}
-# We can delete this section later or just call in our metric function here. Any brilliant ideas about what to consider? 
-
-# So I'm not totally clear if we have to compare to our observed table, but it's a way to get dates into the sagerm file, so I just copied over what we did in class. 
-
-sager = read.table("sager.txt", header=T)
-head(sager)
-
-# add date from the existing columns of day, month, year
-sager = sager %>% mutate(date=make_date(year=year, month=month, day=day))
-
-winter_flow <- function(m, o, month, year, wy) {
-
-  df = cbind.data.frame(m, o, month, year, wy)
-
-  winter <- df %>% 
-    filter(month %in% c("11", "12", "1", "2")) %>% 
-    group_by(year) %>% 
-    summarize(
-      model_average_flow = mean(m),
-      obs_average_flow = mean(o)
-    )
-  
-  diff = sum(winter$model_average_flow) - sum(winter$obs_average_flow)
-  
-return(diff)
- 
-}
-
-winter_flow(sagerm$m, sagerm$o, sagerm$month, sagerm$year, sagerm$wy)
-# 
-# 
-# check_minannual(o=msage$obs, month=msage$month, day=msage$day, year=msage$year, wy=msage$wy,m=msagel$streamflow)
-
-```
-
-
-2. Apply to the streamflow data provided in sagerm.txt (multiple model results)
-
-```{r apply to data}
+# read in sager data
+# -----------------------------------------------------------------------------
+sager = read.table("sager.txt", header=T) %>% 
+  mutate(date=make_date(year=year, month=month, day=day))
 
 # now read in the model outputs
-sagerm = read.table("sagerm.txt", header = T)
-head(sagerm)
+# -----------------------------------------------------------------------------
+sagerm = read.table("sagerm.txt", header = T) %>% 
+  mutate(date = sager$date,
+         month = sager$month, 
+         year = sager$year,
+         day = sager$day,
+         wy = sager$wy,
+         obs = sager$obs)
 
-
-sagerm$date = sager$date
-sagerm$month = sager$month
-sagerm$year = sager$year
-sagerm$day = sager$day
-sagerm$wy = sager$wy
-
-head(sagerm)
-
-# and we still have observed data from above
-# useful to combine by date to make sure that streamflow and observe match
-
-sagerm$obs = sager$obs
-
-
+# call in and run function using sager data
+# -----------------------------------------------------------------------------
+source("performance_metric.R")
+winter_flow(m = sagerm$m, 
+            o = sagerm$o, 
+            month = sagerm$month, 
+            year = sagerm$year, 
+            wy = sagerm$wy)
 ```
 
-
-3.  Find the simulation that gives the best performance (record that and add to the quiz on gauchospace)
+Question 03: Find the simulation that gives the best performance (record that and add to the quiz on gauchospace)
 
 ```{r best simulation}
-# how can we plot all results
 # to turn all the columns of different outputs into a single column identified by "run"
+# -----------------------------------------------------------------------------
 sagerml = sagerm %>% 
-  gather(key="run",value="streamflow", -date, -month, -day, -year, -wy, -obs)
-
+  gather(key="run",
+         value="streamflow", 
+         -date, -month, -day, -year, -wy, -obs)
 
 # compute performance measures for all output
+# -----------------------------------------------------------------------------
 res = sagerm %>% 
   select(-date, -month, -day, -year, -wy,-obs ) %>%
   map_dbl(~nse(m=.x, o=sagerm$obs))
 
 summary(res)
-
 sims = names(sagerm %>% select(-date, -month, -day,-year,-wy, -obs))
 results = cbind.data.frame(simnames=sims, nse=res)
 
-
 # another example using our low flow statistics
 # use apply to compute for all the data
+# -----------------------------------------------------------------------------
 res = sagerm %>% 
   select(-date, -month, -day, -year, -wy, -obs) %>% 
   map_dbl(~winter_flow(o=sagerm$obs, month=sagerm$month, 
                         year=sagerm$year, wy=sagerm$wy, m=.x))
 
-
 # add to our results
-results$diff = res
+# -----------------------------------------------------------------------------
+results$cor = res
+answer_03 = max(results$cor)
+```
 
+Question 04: Create a boxplot of your metric applied to sagerm.txt
 
-# interesting to look at range of metrics - could use this to decide on
-# acceptable values
-summary(results)
-
+```{r best simulation}
 # graph range of performance measures
+# -----------------------------------------------------------------------------
 resultsl = results %>% 
   gather(key="metric",value="value", -simnames)
 
@@ -131,20 +94,8 @@ ggplot(resultsl, aes(metric, value))+
 
 # are metrics related to each other
 # useful for assessing whether there are tradeoffs
-ggplot(results, aes(diff, nse))+geom_point()
+# -----------------------------------------------------------------------------
+ggplot(results, aes(cor, nse))+geom_point()
 ```
 
-
-4. Create a boxplot of your metric applied to sagerm.txt
-
-```{r boxplot}
-
-```
-
-
-5. Submit metric function and boxplot on gauchospace
-
-```{r}
-
-```
-
+Question 05: Submit metric function and boxplot on gauchospace
