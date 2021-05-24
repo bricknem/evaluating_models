@@ -2,7 +2,9 @@
 title: "Evaluating Models"
 author: "Margaret Brickner, Anna Abelman, Rich Viebrock"
 date: "5/20/2021"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -15,10 +17,15 @@ library(ggplot2)
 source("nse.R")
 ```
 
-Task: Develop your own performance metric - Be creative here. Imagine an application of a hydrologic model as a component of an environmental assessment. It could be ecologically related (e.g estimating streamflow during the summer as part of assessing fish habitat quality); water resource management related (e.g estimating total water supply), or something else.
 
-Question 01: Code your metric as a function
-Question 02: Apply to the streamflow data provided in sagerm.txt (multiple model results)
+### Question 01: Code your metric as a function
+
+```{r}
+# We picked winter streamflow (11,12,1,2)
+source("performance_metric.R")
+```
+
+### Question 02: Apply to the streamflow data provided in sagerm.txt (multiple model results)
 
 ```{r performance metric}
 # read in sager data
@@ -38,7 +45,7 @@ sagerm = read.table("sagerm.txt", header = T) %>%
 
 # call in and run function using sager data
 # -----------------------------------------------------------------------------
-source("performance_metric.R")
+
 winter_flow(m = sagerm$m, 
             o = sagerm$o, 
             month = sagerm$month, 
@@ -46,7 +53,7 @@ winter_flow(m = sagerm$m,
             wy = sagerm$wy)
 ```
 
-Question 03: Find the simulation that gives the best performance (record that and add to the quiz on gauchospace)
+### Question 03: Find the simulation that gives the best performance (record that and add to the quiz on gauchospace)
 
 ```{r best simulation}
 # to turn all the columns of different outputs into a single column identified by "run"
@@ -73,20 +80,27 @@ res = sagerm %>%
   select(-date, -month, -day, -year, -wy, -obs) %>% 
   map_dbl(~winter_flow(o=sagerm$obs, month=sagerm$month, 
                         year=sagerm$year, wy=sagerm$wy, m=.x))
-
 # add to our results
 # -----------------------------------------------------------------------------
 results$cor = res
 answer_03 = max(results$cor)
-```
 
-Question 04: Create a boxplot of your metric applied to sagerm.txt
-
-```{r best simulation}
-# graph range of performance measures
+# put this in a format that's easy to compare
+# use which.min and convert all to positive values to find the closest match
 # -----------------------------------------------------------------------------
 resultsl = results %>% 
   gather(key="metric",value="value", -simnames)
+
+which.min(abs(0 - resultsl$value))
+
+# For us the closest simulation was V168
+
+```
+
+### Question 04: Create a boxplot of your metric applied to sagerm.txt
+
+```{r graphing}
+# graph range of performance measures
 
 ggplot(resultsl, aes(metric, value))+
   geom_boxplot()+
@@ -102,4 +116,4 @@ ggsave("evaluating_models.png")
 ggplot(results, aes(cor, nse))+geom_point()
 ```
 
-Question 05: Submit metric function and boxplot on gauchospace
+### Question 05: Submit metric function and boxplot on gauchospace
