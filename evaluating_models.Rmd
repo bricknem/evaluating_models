@@ -1,5 +1,5 @@
 ---
-title: "evaluating_models"
+title: "Evaluating Models"
 author: "Margaret Brickner, Anna Abelman, Rich Viebrock"
 date: "5/20/2021"
 output: html_document
@@ -90,7 +90,11 @@ resultsl = results %>%
 
 ggplot(resultsl, aes(metric, value))+
   geom_boxplot()+
-  facet_wrap(~metric, scales="free")
+  facet_wrap(~metric, scales="free") +
+  labs(title = "Streamflow Model Evaluation", x = "Metric", y = "Value") + 
+  theme_bw()
+
+ggsave("evaluating_models.png")
 
 # are metrics related to each other
 # useful for assessing whether there are tradeoffs
